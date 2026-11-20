@@ -1,7 +1,79 @@
 {
-  "titulo": "Casos de prueba - Usuarios, solicitudes y documentos",
-  "objetivo": "Validar la integridad, unicidad, obligatoriedad y reglas de negocio de las tablas del sistema.",
-  "version": "1.0",
+  "titulo": "Plan de Pruebas API REST - Usuarios, solicitudes y documentos",
+  "objetivo": "Validar mediante la API REST la unicidad, obligatoriedad, reglas de negocio e integridad referencial de los recursos usuarios, solicitudes y documentos.",
+  "version": "2.0",
+  "criteriosEntrada": [
+    "API REST desplegada en el entorno de pruebas con los endpoints /api/usuarios, /api/solicitudes y /api/documentos disponibles.",
+    "Datos semilla cargados: usuario con ID 1 y solicitud con ID 1.",
+    "Token Bearer vigente con permisos de gestor y postulante.",
+    "Especificación de la API y contratos de respuesta aprobados."
+  ],
+  "criteriosSalida": [
+    "100% de los casos de prioridad Alta ejecutados y aprobados.",
+    "Al menos 95% del total de casos ejecutados y aprobados.",
+    "Sin defectos críticos ni bloqueantes abiertos.",
+    "Código HTTP y estructura de respuesta coincidentes con codigoEsperado y tipoRespuestaEsperada."
+  ],
+  "roles": [
+    {
+      "rol": "QA Lead",
+      "responsabilidad": "Aprobar el plan, priorizar casos y decidir los criterios de salida."
+    },
+    {
+      "rol": "QA Automatizador",
+      "responsabilidad": "Implementar y ejecutar los casos de prueba sobre la API."
+    },
+    {
+      "rol": "Desarrollador backend",
+      "responsabilidad": "Corregir defectos y dar soporte al entorno de pruebas."
+    },
+    {
+      "rol": "Product Owner",
+      "responsabilidad": "Validar las historias de usuario y las reglas de negocio."
+    }
+  ],
+  "cronograma": [
+    {
+      "fase": "Análisis y diseño de casos",
+      "duracion": "2 días"
+    },
+    {
+      "fase": "Preparación de datos y entorno",
+      "duracion": "1 día"
+    },
+    {
+      "fase": "Ejecución de pruebas API (smoke y regresión)",
+      "duracion": "3 días"
+    },
+    {
+      "fase": "Reejecución de defectos y cierre",
+      "duracion": "1 día"
+    }
+  ],
+  "entregables": [
+    "Plan de pruebas API REST (este documento).",
+    "Colección de requests automatizados por endpoint.",
+    "Reporte de ejecución con resultado y código HTTP observado por caso.",
+    "Registro de defectos con evidencia (request, response y código HTTP)."
+  ],
+  "riesgos": [
+    {
+      "riesgo": "Datos semilla inconsistentes (usuario ID 1 o solicitud ID 1 inexistentes) invalidan los casos dependientes.",
+      "mitigacion": "Restaurar los datos semilla antes de cada ciclo de ejecución."
+    },
+    {
+      "riesgo": "Ambigüedad entre 400 y 422 para errores de negocio genera falsos negativos.",
+      "mitigacion": "Confirmar la convención de códigos HTTP con el equipo de desarrollo."
+    },
+    {
+      "riesgo": "Dependencias entre casos (eliminaciones y documentos requieren recursos previos).",
+      "mitigacion": "Ejecutar en orden de dependencias y aislar los datos de cada caso."
+    },
+    {
+      "riesgo": "Token Bearer expirado durante la ejecución.",
+      "mitigacion": "Renovar el token antes de cada suite."
+    }
+  ],
   "planPrueba": [
     {
       "epic": "usuarios",
@@ -44,7 +116,7 @@
     {
       "epic": "integridad",
       "grupo": "integridad",
-      "descripcion": "Restricciones referenciales y cascade rules",
+      "descripcion": "Restricciones de integridad referencial verificadas por API",
       "ids": [
         "TC-18",
         "TC-19",
@@ -60,7 +132,13 @@
       "historiaUsuario": "Como usuario del sistema, quiero poder registrarme con datos válidos para acceder correctamente a la plataforma.",
       "tipo": "Funcional",
       "titulo": "Crear usuario válido",
-      "tabla": "usuarios",
+      "endpoint": "/api/usuarios",
+      "metodo": "POST",
+      "headers": {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "Authorization": "Bearer {{token}}"
+      },
       "payload": {
         "nombre_usuario": "jgarcia",
         "email_usuario": "jgarcia@empresa.com",
@@ -71,20 +149,28 @@
         "idioma": "es",
         "zona_horaria": "America/Santiago"
       },
+      "codigoEsperado": "201 Created",
+      "tipoRespuestaEsperada": "application/json: usuario creado con id asignado, sin exponer clave_hash",
       "resultadoEsperado": "El registro del usuario se completa correctamente.",
       "estado": "Pendiente",
       "prioridad": "Alta",
       "precondiciones": "Usuario sin registro previo y datos válidos.",
-      "pasos": "1. Preparar datos del caso TC-01.\n2. Ejecutar la operación sobre la tabla usuarios.\n3. Validar la respuesta del sistema.\n4. Confirmar la regla de negocio o la restricción correspondiente."
+      "pasos": "1. Preparar datos del caso TC-01 y token Bearer válido.\n2. Ejecutar POST /api/usuarios con el payload del caso.\n3. Validar código HTTP 201 Created y estructura de la respuesta.\n4. Confirmar la regla de negocio o la restricción correspondiente."
     },
     {
       "id": "TC-02",
       "epic": "usuarios",
       "modulo": "usuarios",
       "historiaUsuario": "Como usuario del sistema, quiero evitar duplicados en mi correo para mantener la integridad de mis datos.",
-      "tipo": "No funcional",
+      "tipo": "Funcional",
       "titulo": "Email duplicado",
-      "tabla": "usuarios",
+      "endpoint": "/api/usuarios",
+      "metodo": "POST",
+      "headers": {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "Authorization": "Bearer {{token}}"
+      },
       "payload": {
         "nombre_usuario": "mlopez",
         "email_usuario": "jgarcia@empresa.com",
@@ -92,20 +178,28 @@
         "nombre": "Maria",
         "apellido": "Lopez"
       },
+      "codigoEsperado": "409 Conflict",
+      "tipoRespuestaEsperada": "application/json: error de conflicto indicando correo duplicado",
       "resultadoEsperado": "El sistema rechaza el registro porque el correo ya está registrado.",
       "estado": "Pendiente",
       "prioridad": "Alta",
-      "precondiciones": "Usuario sin registro previo y datos válidos.",
-      "pasos": "1. Preparar datos del caso TC-02.\n2. Ejecutar la operación sobre la tabla usuarios.\n3. Validar la respuesta del sistema.\n4. Confirmar la regla de negocio o la restricción correspondiente."
+      "precondiciones": "Existe previamente un usuario registrado con el correo jgarcia@empresa.com (creado por TC-01).",
+      "pasos": "1. Preparar datos del caso TC-02 y token Bearer válido.\n2. Ejecutar POST /api/usuarios con el payload del caso.\n3. Validar código HTTP 409 Conflict y mensaje de correo duplicado.\n4. Confirmar la regla de negocio o la restricción correspondiente."
     },
     {
       "id": "TC-03",
       "epic": "usuarios",
       "modulo": "usuarios",
       "historiaUsuario": "Como usuario del sistema, quiero que mi nombre de usuario sea único para no generar conflictos de acceso.",
-      "tipo": "No funcional",
+      "tipo": "Funcional",
       "titulo": "Nombre de usuario duplicado",
-      "tabla": "usuarios",
+      "endpoint": "/api/usuarios",
+      "metodo": "POST",
+      "headers": {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "Authorization": "Bearer {{token}}"
+      },
       "payload": {
         "nombre_usuario": "jgarcia",
         "email_usuario": "mlopez@empresa.com",
@@ -113,11 +207,13 @@
         "nombre": "Maria",
         "apellido": "Lopez"
       },
+      "codigoEsperado": "409 Conflict",
+      "tipoRespuestaEsperada": "application/json: error de conflicto indicando nombre de usuario duplicado",
       "resultadoEsperado": "El sistema rechaza el registro porque el nombre de usuario ya está en uso.",
       "estado": "Pendiente",
       "prioridad": "Alta",
-      "precondiciones": "Usuario sin registro previo y datos válidos.",
-      "pasos": "1. Preparar datos del caso TC-03.\n2. Ejecutar la operación sobre la tabla usuarios.\n3. Validar la respuesta del sistema.\n4. Confirmar la regla de negocio o la restricción correspondiente."
+      "precondiciones": "Existe previamente un usuario con nombre de usuario jgarcia (creado por TC-01).",
+      "pasos": "1. Preparar datos del caso TC-03 y token Bearer válido.\n2. Ejecutar POST /api/usuarios con el payload del caso.\n3. Validar código HTTP 409 Conflict y mensaje de nombre de usuario duplicado.\n4. Confirmar la regla de negocio o la restricción correspondiente."
     },
     {
       "id": "TC-04",
@@ -126,7 +222,13 @@
       "historiaUsuario": "Como usuario del sistema, quiero registrar datos obligatorios válidos para completar mi perfil sin errores.",
       "tipo": "No funcional",
       "titulo": "Email vacío",
-      "tabla": "usuarios",
+      "endpoint": "/api/usuarios",
+      "metodo": "POST",
+      "headers": {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "Authorization": "Bearer {{token}}"
+      },
       "payload": {
         "nombre_usuario": "anunez",
         "email_usuario": "",
@@ -134,11 +236,13 @@
         "nombre": "Ana",
         "apellido": "Nunez"
       },
+      "codigoEsperado": "400 Bad Request",
+      "tipoRespuestaEsperada": "application/json: error de validación indicando el campo email_usuario",
       "resultadoEsperado": "El sistema no permite continuar porque faltan datos obligatorios o el formato es incorrecto.",
       "estado": "Pendiente",
       "prioridad": "Alta",
       "precondiciones": "Usuario sin registro previo y datos válidos.",
-      "pasos": "1. Preparar datos del caso TC-04.\n2. Ejecutar la operación sobre la tabla usuarios.\n3. Validar la respuesta del sistema.\n4. Confirmar la regla de negocio o la restricción correspondiente."
+      "pasos": "1. Preparar datos del caso TC-04 y token Bearer válido.\n2. Ejecutar POST /api/usuarios con el payload del caso.\n3. Validar código HTTP 400 Bad Request y detalle del campo obligatorio.\n4. Confirmar la regla de negocio o la restricción correspondiente."
     },
     {
       "id": "TC-05",
@@ -147,7 +251,13 @@
       "historiaUsuario": "Como sistema, quiero validar la clave encriptada para impedir accesos con credenciales inválidas.",
       "tipo": "No funcional",
       "titulo": "Clave hash con longitud inválida",
-      "tabla": "usuarios",
+      "endpoint": "/api/usuarios",
+      "metodo": "POST",
+      "headers": {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "Authorization": "Bearer {{token}}"
+      },
       "payload": {
         "nombre_usuario": "rlopez",
         "email_usuario": "rlopez@empresa.com",
@@ -155,11 +265,13 @@
         "nombre": "Rodrigo",
         "apellido": "Lopez"
       },
+      "codigoEsperado": "400 Bad Request",
+      "tipoRespuestaEsperada": "application/json: error de validación indicando el formato de clave_hash",
       "resultadoEsperado": "El sistema rechaza la contraseña porque su formato no es válido.",
       "estado": "Pendiente",
       "prioridad": "Alta",
       "precondiciones": "Usuario sin registro previo y datos válidos.",
-      "pasos": "1. Preparar datos del caso TC-05.\n2. Ejecutar la operación sobre la tabla usuarios.\n3. Validar la respuesta del sistema.\n4. Confirmar la regla de negocio o la restricción correspondiente."
+      "pasos": "1. Preparar datos del caso TC-05 y token Bearer válido.\n2. Ejecutar POST /api/usuarios con el payload del caso.\n3. Validar código HTTP 400 Bad Request y detalle del campo clave_hash.\n4. Confirmar la regla de negocio o la restricción correspondiente."
     },
     {
       "id": "TC-06",
@@ -168,7 +280,13 @@
       "historiaUsuario": "Como usuario del sistema, quiero poder guardar mi información con campos opcionales vacíos sin que falle el registro.",
       "tipo": "Funcional",
       "titulo": "Usuario con campos opcionales nulos",
-      "tabla": "usuarios",
+      "endpoint": "/api/usuarios",
+      "metodo": "POST",
+      "headers": {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "Authorization": "Bearer {{token}}"
+      },
       "payload": {
         "nombre_usuario": "lfernandez",
         "email_usuario": "lfernandez@empresa.com",
@@ -179,11 +297,13 @@
         "idioma": null,
         "zona_horaria": null
       },
+      "codigoEsperado": "201 Created",
+      "tipoRespuestaEsperada": "application/json: usuario creado con campos opcionales en null",
       "resultadoEsperado": "El registro se guarda correctamente aunque algunos campos opcionales queden vacíos.",
       "estado": "Pendiente",
       "prioridad": "Alta",
       "precondiciones": "Usuario sin registro previo y datos válidos.",
-      "pasos": "1. Preparar datos del caso TC-06.\n2. Ejecutar la operación sobre la tabla usuarios.\n3. Validar la respuesta del sistema.\n4. Confirmar la regla de negocio o la restricción correspondiente."
+      "pasos": "1. Preparar datos del caso TC-06 y token Bearer válido.\n2. Ejecutar POST /api/usuarios con el payload del caso.\n3. Validar código HTTP 201 Created y campos opcionales nulos en la respuesta.\n4. Confirmar la regla de negocio o la restricción correspondiente."
     },
     {
       "id": "TC-07",
@@ -192,7 +312,13 @@
       "historiaUsuario": "Como sistema, quiero validar los límites máximos de longitud para evitar inconsistencias en la información del usuario.",
       "tipo": "No funcional",
       "titulo": "Validación de longitud máxima",
-      "tabla": "usuarios",
+      "endpoint": "/api/usuarios",
+      "metodo": "POST",
+      "headers": {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "Authorization": "Bearer {{token}}"
+      },
       "payload": {
         "nombre_usuario": "usuario_50",
         "email_usuario": "limite@empresa.com",
@@ -200,11 +326,13 @@
         "nombre": "NombreConLongitudMaximaNombreConLongitudMaxima",
         "apellido": "ApellidoConLongitudMaximaApellidoConLongitudMaxima"
       },
+      "codigoEsperado": "201 Created (dentro del límite) / 400 Bad Request (excede el límite)",
+      "tipoRespuestaEsperada": "application/json: usuario creado o error de validación según el largo del campo",
       "resultadoEsperado": "El sistema acepta los valores dentro del límite permitido y rechaza los que lo exceden.",
       "estado": "Pendiente",
       "prioridad": "Media",
       "precondiciones": "Usuario sin registro previo y datos válidos.",
-      "pasos": "1. Preparar datos del caso TC-07.\n2. Ejecutar la operación sobre la tabla usuarios.\n3. Validar la respuesta del sistema.\n4. Confirmar la regla de negocio o la restricción correspondiente."
+      "pasos": "1. Preparar datos del caso TC-07 y token Bearer válido.\n2. Ejecutar POST /api/usuarios con el payload del caso.\n3. Validar código HTTP según la longitud del campo y el detalle de validación.\n4. Confirmar la regla de negocio o la restricción correspondiente."
     },
     {
       "id": "TC-08",
@@ -213,7 +341,13 @@
       "historiaUsuario": "Como gestor del sistema, quiero crear solicitudes válidas para publicar vacantes con la información correcta.",
       "tipo": "Funcional",
       "titulo": "Crear solicitud válida",
-      "tabla": "solicitudes",
+      "endpoint": "/api/solicitudes",
+      "metodo": "POST",
+      "headers": {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "Authorization": "Bearer {{token}}"
+      },
       "payload": {
         "usuario_id": 1,
         "titulo": "Desarrollador Full Stack Senior",
@@ -232,31 +366,41 @@
         "nivel_experiencia": "senior",
         "fecha_inicio_proyecto": "2026-11-15"
       },
+      "codigoEsperado": "201 Created",
+      "tipoRespuestaEsperada": "application/json: solicitud creada con id asignado y estado Pendiente",
       "resultadoEsperado": "La solicitud se guarda correctamente con toda la información requerida.",
       "estado": "Pendiente",
       "prioridad": "Alta",
       "precondiciones": "Usuario existente en el sistema y permisos habilitados.",
-      "pasos": "1. Preparar datos del caso TC-08.\n2. Ejecutar la operación sobre la tabla solicitudes.\n3. Validar la respuesta del sistema.\n4. Confirmar la regla de negocio o la restricción correspondiente."
+      "pasos": "1. Preparar datos del caso TC-08 y token Bearer válido.\n2. Ejecutar POST /api/solicitudes con el payload del caso.\n3. Validar código HTTP 201 Created y estructura de la respuesta.\n4. Confirmar la regla de negocio o la restricción correspondiente."
     },
     {
       "id": "TC-09",
       "epic": "solicitudes",
       "modulo": "solicitudes",
       "historiaUsuario": "Como sistema, quiero validar la relación con el usuario para evitar solicitudes no asociadas a un registro real.",
-      "tipo": "No funcional",
+      "tipo": "Funcional",
       "titulo": "Solicitud con usuario inexistente",
-      "tabla": "solicitudes",
+      "endpoint": "/api/solicitudes",
+      "metodo": "POST",
+      "headers": {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "Authorization": "Bearer {{token}}"
+      },
       "payload": {
         "usuario_id": 999999,
         "titulo": "Analista de Datos",
         "estado": "Pendiente",
         "numero_vacantes": 1
       },
+      "codigoEsperado": "422 Unprocessable Entity",
+      "tipoRespuestaEsperada": "application/json: error de referencia inválida indicando usuario_id inexistente",
       "resultadoEsperado": "El sistema rechaza la operación porque la relación con el usuario no es válida.",
       "estado": "Pendiente",
       "prioridad": "Alta",
       "precondiciones": "Usuario existente en el sistema y permisos habilitados.",
-      "pasos": "1. Preparar datos del caso TC-09.\n2. Ejecutar la operación sobre la tabla solicitudes.\n3. Validar la respuesta del sistema.\n4. Confirmar la regla de negocio o la restricción correspondiente."
+      "pasos": "1. Preparar datos del caso TC-09 y token Bearer válido.\n2. Ejecutar POST /api/solicitudes con el payload del caso.\n3. Validar código HTTP 422 Unprocessable Entity y detalle de usuario_id.\n4. Confirmar la regla de negocio o la restricción correspondiente."
     },
     {
       "id": "TC-10",
@@ -265,47 +409,69 @@
       "historiaUsuario": "Como gestor del sistema, quiero validar la cantidad de vacantes para asegurar que se publique al menos una posición disponible.",
       "tipo": "No funcional",
       "titulo": "Numero de vacantes en cero",
-      "tabla": "solicitudes",
+      "endpoint": "/api/solicitudes",
+      "metodo": "POST",
+      "headers": {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "Authorization": "Bearer {{token}}"
+      },
       "payload": {
         "usuario_id": 1,
         "titulo": "Frontend Developer",
         "estado": "Pendiente",
         "numero_vacantes": 0
       },
+      "codigoEsperado": "400 Bad Request",
+      "tipoRespuestaEsperada": "application/json: error de validación indicando numero_vacantes menor al mínimo",
       "resultadoEsperado": "El sistema no permite una solicitud con cero vacantes.",
       "estado": "Pendiente",
       "prioridad": "Alta",
       "precondiciones": "Usuario existente en el sistema y permisos habilitados.",
-      "pasos": "1. Preparar datos del caso TC-10.\n2. Ejecutar la operación sobre la tabla solicitudes.\n3. Validar la respuesta del sistema.\n4. Confirmar la regla de negocio o la restricción correspondiente."
+      "pasos": "1. Preparar datos del caso TC-10 y token Bearer válido.\n2. Ejecutar POST /api/solicitudes con el payload del caso.\n3. Validar código HTTP 400 Bad Request y detalle de numero_vacantes.\n4. Confirmar la regla de negocio o la restricción correspondiente."
     },
     {
       "id": "TC-11",
       "epic": "solicitudes",
       "modulo": "solicitudes",
       "historiaUsuario": "Como gestor del sistema, quiero que el título de la solicitud sea obligatorio para identificar claramente la vacante.",
-      "tipo": "No funcional",
+      "tipo": "Funcional",
       "titulo": "Título vacío",
-      "tabla": "solicitudes",
+      "endpoint": "/api/solicitudes",
+      "metodo": "POST",
+      "headers": {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "Authorization": "Bearer {{token}}"
+      },
       "payload": {
         "usuario_id": 1,
         "titulo": "",
         "estado": "Pendiente",
         "numero_vacantes": 1
       },
+      "codigoEsperado": "400 Bad Request",
+      "tipoRespuestaEsperada": "application/json: error de validación indicando titulo obligatorio",
       "resultadoEsperado": "El sistema rechaza la solicitud porque falta información obligatoria.",
       "estado": "Pendiente",
       "prioridad": "Alta",
       "precondiciones": "Usuario existente en el sistema y permisos habilitados.",
-      "pasos": "1. Preparar datos del caso TC-11.\n2. Ejecutar la operación sobre la tabla solicitudes.\n3. Validar la respuesta del sistema.\n4. Confirmar la regla de negocio o la restricción correspondiente."
+      "pasos": "1. Preparar datos del caso TC-11 y token Bearer válido.\n2. Ejecutar POST /api/solicitudes con el payload del caso.\n3. Validar código HTTP 400 Bad Request y detalle de titulo.\n4. Confirmar la regla de negocio o la restricción correspondiente."
     },
     {
       "id": "TC-12",
       "epic": "solicitudes",
       "modulo": "solicitudes",
       "historiaUsuario": "Como gestor del sistema, quiero validar el rango salarial para evitar inconsistencias en la publicación de la vacante.",
-      "tipo": "No funcional",
+      "tipo": "Funcional",
       "titulo": "Renta desde mayor que renta hasta",
-      "tabla": "solicitudes",
+      "endpoint": "/api/solicitudes",
+      "metodo": "POST",
+      "headers": {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "Authorization": "Bearer {{token}}"
+      },
       "payload": {
         "usuario_id": 1,
         "titulo": "Especialista en Seguridad",
@@ -314,20 +480,28 @@
         "renta_desde": 3500000,
         "renta_hasta": 2200000
       },
+      "codigoEsperado": "422 Unprocessable Entity",
+      "tipoRespuestaEsperada": "application/json: error de regla de negocio indicando renta_desde mayor que renta_hasta",
       "resultadoEsperado": "El sistema rechaza la operación porque el valor está fuera del rango permitido.",
       "estado": "Pendiente",
       "prioridad": "Alta",
       "precondiciones": "Usuario existente en el sistema y permisos habilitados.",
-      "pasos": "1. Preparar datos del caso TC-12.\n2. Ejecutar la operación sobre la tabla solicitudes.\n3. Validar la respuesta del sistema.\n4. Confirmar la regla de negocio o la restricción correspondiente."
+      "pasos": "1. Preparar datos del caso TC-12 y token Bearer válido.\n2. Ejecutar POST /api/solicitudes con el payload del caso.\n3. Validar código HTTP 422 Unprocessable Entity y detalle del rango salarial.\n4. Confirmar la regla de negocio o la restricción correspondiente."
     },
     {
       "id": "TC-13",
       "epic": "solicitudes",
       "modulo": "solicitudes",
       "historiaUsuario": "Como gestor del sistema, quiero validar la fecha de inicio del proyecto para asegurar que se ingresa una fecha real y consistente.",
-      "tipo": "No funcional",
+      "tipo": "Funcional",
       "titulo": "Fecha inválida",
-      "tabla": "solicitudes",
+      "endpoint": "/api/solicitudes",
+      "metodo": "POST",
+      "headers": {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "Authorization": "Bearer {{token}}"
+      },
       "payload": {
         "usuario_id": 1,
         "titulo": "Ingeniero QA",
@@ -335,11 +509,13 @@
         "numero_vacantes": 1,
         "fecha_inicio_proyecto": "2026-02-30"
       },
+      "codigoEsperado": "400 Bad Request",
+      "tipoRespuestaEsperada": "application/json: error de validación indicando fecha_inicio_proyecto con formato o valor inválido",
       "resultadoEsperado": "El sistema rechaza la fecha porque no cumple con el formato o el rango esperado.",
       "estado": "Pendiente",
       "prioridad": "Alta",
       "precondiciones": "Usuario existente en el sistema y permisos habilitados.",
-      "pasos": "1. Preparar datos del caso TC-13.\n2. Ejecutar la operación sobre la tabla solicitudes.\n3. Validar la respuesta del sistema.\n4. Confirmar la regla de negocio o la restricción correspondiente."
+      "pasos": "1. Preparar datos del caso TC-13 y token Bearer válido.\n2. Ejecutar POST /api/solicitudes con el payload del caso.\n3. Validar código HTTP 400 Bad Request y detalle de fecha_inicio_proyecto.\n4. Confirmar la regla de negocio o la restricción correspondiente."
     },
     {
       "id": "TC-14",
@@ -348,36 +524,52 @@
       "historiaUsuario": "Como postulante, quiero adjuntar mi documento con formato válido para completar mi solicitud correctamente.",
       "tipo": "Funcional",
       "titulo": "Documento válido",
-      "tabla": "documentos",
+      "endpoint": "/api/documentos",
+      "metodo": "POST",
+      "headers": {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "Authorization": "Bearer {{token}}"
+      },
       "payload": {
         "solicitud_id": 1,
         "extension": ".pdf",
         "nombre_archivo": "cv_jgarcia.pdf"
       },
+      "codigoEsperado": "201 Created",
+      "tipoRespuestaEsperada": "application/json: documento creado con id asignado asociado a solicitud_id",
       "resultadoEsperado": "El documento queda asociado correctamente a la solicitud.",
       "estado": "Pendiente",
       "prioridad": "Media",
       "precondiciones": "Solicitud válida creada previamente.",
-      "pasos": "1. Preparar datos del caso TC-14.\n2. Ejecutar la operación sobre la tabla documentos.\n3. Validar la respuesta del sistema.\n4. Confirmar la regla de negocio o la restricción correspondiente."
+      "pasos": "1. Preparar datos del caso TC-14 y token Bearer válido.\n2. Ejecutar POST /api/documentos con el payload del caso.\n3. Validar código HTTP 201 Created y la asociación con la solicitud.\n4. Confirmar la regla de negocio o la restricción correspondiente."
     },
     {
       "id": "TC-15",
       "epic": "documentos",
       "modulo": "documentos",
       "historiaUsuario": "Como sistema, quiero validar la relación del documento con una solicitud existente para evitar archivos huérfanos.",
-      "tipo": "No funcional",
+      "tipo": "Funcional",
       "titulo": "Documento con solicitud inexistente",
-      "tabla": "documentos",
+      "endpoint": "/api/documentos",
+      "metodo": "POST",
+      "headers": {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "Authorization": "Bearer {{token}}"
+      },
       "payload": {
         "solicitud_id": 999999,
         "extension": ".docx",
         "nombre_archivo": "cv_invalido.docx"
       },
-      "resultadoEsperado": "El sistema rechaza la operación porque la relación con el usuario no es válida.",
+      "codigoEsperado": "422 Unprocessable Entity",
+      "tipoRespuestaEsperada": "application/json: error de referencia inválida indicando solicitud_id inexistente",
+      "resultadoEsperado": "El sistema rechaza la operación porque la solicitud asociada no existe.",
       "estado": "Pendiente",
       "prioridad": "Media",
       "precondiciones": "Solicitud válida creada previamente.",
-      "pasos": "1. Preparar datos del caso TC-15.\n2. Ejecutar la operación sobre la tabla documentos.\n3. Validar la respuesta del sistema.\n4. Confirmar la regla de negocio o la restricción correspondiente."
+      "pasos": "1. Preparar datos del caso TC-15 y token Bearer válido.\n2. Ejecutar POST /api/documentos con el payload del caso.\n3. Validar código HTTP 422 Unprocessable Entity y detalle de solicitud_id.\n4. Confirmar la regla de negocio o la restricción correspondiente."
     },
     {
       "id": "TC-16",
@@ -386,17 +578,25 @@
       "historiaUsuario": "Como sistema, quiero validar la extensión del archivo para asegurar que el documento tenga formato permitido.",
       "tipo": "No funcional",
       "titulo": "Extensión vacía",
-      "tabla": "documentos",
+      "endpoint": "/api/documentos",
+      "metodo": "POST",
+      "headers": {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "Authorization": "Bearer {{token}}"
+      },
       "payload": {
         "solicitud_id": 1,
         "extension": "",
         "nombre_archivo": "documento_sin_extension"
       },
+      "codigoEsperado": "400 Bad Request",
+      "tipoRespuestaEsperada": "application/json: error de validación indicando extension obligatoria",
       "resultadoEsperado": "El sistema rechaza el documento porque falta la extensión o el archivo no es válido.",
       "estado": "Pendiente",
       "prioridad": "Media",
       "precondiciones": "Solicitud válida creada previamente.",
-      "pasos": "1. Preparar datos del caso TC-16.\n2. Ejecutar la operación sobre la tabla documentos.\n3. Validar la respuesta del sistema.\n4. Confirmar la regla de negocio o la restricción correspondiente."
+      "pasos": "1. Preparar datos del caso TC-16 y token Bearer válido.\n2. Ejecutar POST /api/documentos con el payload del caso.\n3. Validar código HTTP 400 Bad Request y detalle de extension.\n4. Confirmar la regla de negocio o la restricción correspondiente."
     },
     {
       "id": "TC-17",
@@ -405,17 +605,25 @@
       "historiaUsuario": "Como sistema, quiero sanitizar el nombre del archivo para prevenir rutas sospechosas o ataques de carga de archivos.",
       "tipo": "No funcional",
       "titulo": "Nombre de archivo con ruta sospechosa",
-      "tabla": "documentos",
+      "endpoint": "/api/documentos",
+      "metodo": "POST",
+      "headers": {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "Authorization": "Bearer {{token}}"
+      },
       "payload": {
         "solicitud_id": 1,
         "extension": ".pdf",
         "nombre_archivo": "../cv/injection.pdf"
       },
+      "codigoEsperado": "400 Bad Request",
+      "tipoRespuestaEsperada": "application/json: error de validación indicando nombre_archivo no permitido",
       "resultadoEsperado": "El sistema rechaza el nombre del archivo porque no cumple con el formato permitido.",
       "estado": "Pendiente",
       "prioridad": "Media",
       "precondiciones": "Solicitud válida creada previamente.",
-      "pasos": "1. Preparar datos del caso TC-17.\n2. Ejecutar la operación sobre la tabla documentos.\n3. Validar la respuesta del sistema.\n4. Confirmar la regla de negocio o la restricción correspondiente."
+      "pasos": "1. Preparar datos del caso TC-17 y token Bearer válido.\n2. Ejecutar POST /api/documentos con el payload del caso.\n3. Validar código HTTP 400 Bad Request y detalle de nombre_archivo.\n4. Confirmar la regla de negocio o la restricción correspondiente."
     },
     {
       "id": "TC-18",
@@ -424,15 +632,22 @@
       "historiaUsuario": "Como sistema, quiero proteger la integridad de los datos para impedir eliminaciones de usuarios con información relacionada.",
       "tipo": "No funcional",
       "titulo": "Eliminar usuario con solicitudes asociadas",
-      "tabla": "usuarios",
-      "payload": {
-        "accion": "DELETE FROM usuarios WHERE id = 1"
+      "endpoint": "/api/usuarios/1",
+      "metodo": "DELETE",
+      "headers": {
+        "Accept": "application/json",
+        "Authorization": "Bearer {{token}}"
       },
+      "payload": {
+        "accion": "DELETE /api/usuarios/1"
+      },
+      "codigoEsperado": "409 Conflict",
+      "tipoRespuestaEsperada": "application/json: error de conflicto por solicitudes asociadas al usuario",
       "resultadoEsperado": "El sistema impide la eliminación porque la información está relacionada con otros registros.",
       "estado": "Pendiente",
       "prioridad": "Alta",
       "precondiciones": "Datos base creados y restricciones del sistema vigentes.",
-      "pasos": "1. Preparar datos del caso TC-18.\n2. Ejecutar la operación sobre la tabla usuarios.\n3. Validar la respuesta del sistema.\n4. Confirmar la regla de negocio o la restricción correspondiente."
+      "pasos": "1. Preparar datos del caso TC-18 y token Bearer válido.\n2. Ejecutar DELETE /api/usuarios/1.\n3. Validar código HTTP 409 Conflict y que el usuario sigue existiendo con GET /api/usuarios/1.\n4. Confirmar la regla de negocio o la restricción correspondiente."
     },
     {
       "id": "TC-19",
@@ -441,33 +656,48 @@
       "historiaUsuario": "Como sistema, quiero mantener la consistencia de los documentos y solicitudes para evitar registros huérfanos.",
       "tipo": "No funcional",
       "titulo": "Eliminar solicitud con documentos asociados",
-      "tabla": "solicitudes",
-      "payload": {
-        "accion": "DELETE FROM solicitudes WHERE id = 1"
+      "endpoint": "/api/solicitudes/1",
+      "metodo": "DELETE",
+      "headers": {
+        "Accept": "application/json",
+        "Authorization": "Bearer {{token}}"
       },
-      "resultadoEsperado": "El sistema elimina la información relacionada o bloquea la acción según la regla de negocio.",
+      "payload": {
+        "accion": "DELETE /api/solicitudes/1"
+      },
+      "codigoEsperado": "409 Conflict",
+      "tipoRespuestaEsperada": "application/json: error de conflicto por documentos asociados a la solicitud",
+      "resultadoEsperado": "El sistema bloquea la eliminación de la solicitud porque tiene documentos asociados y responde 409 Conflict.",
       "estado": "Pendiente",
       "prioridad": "Alta",
       "precondiciones": "Datos base creados y restricciones del sistema vigentes.",
-      "pasos": "1. Preparar datos del caso TC-19.\n2. Ejecutar la operación sobre la tabla solicitudes.\n3. Validar la respuesta del sistema.\n4. Confirmar la regla de negocio o la restricción correspondiente."
+      "pasos": "1. Preparar datos del caso TC-19 y token Bearer válido.\n2. Ejecutar DELETE /api/solicitudes/1.\n3. Validar código HTTP 409 Conflict y que la solicitud sigue existiendo con GET /api/solicitudes/1.\n4. Confirmar la regla de negocio o la restricción correspondiente."
     },
     {
       "id": "TC-20",
       "epic": "integridad",
       "modulo": "usuarios",
       "historiaUsuario": "Como sistema, quiero evitar duplicados al actualizar información personal para mantener la consistencia del registro.",
-      "tipo": "No funcional",
+      "tipo": "Funcional",
       "titulo": "Actualizar email duplicado",
-      "tabla": "usuarios",
+      "endpoint": "/api/usuarios/1",
+      "metodo": "PUT",
+      "headers": {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "Authorization": "Bearer {{token}}"
+      },
       "payload": {
         "usuario_id": 1,
         "email_usuario": "mlopez@empresa.com"
       },
+      "codigoEsperado": "409 Conflict",
+      "tipoRespuestaEsperada": "application/json: error de conflicto indicando correo duplicado",
       "resultadoEsperado": "El sistema rechaza el registro porque el correo ya está registrado.",
       "estado": "Pendiente",
       "prioridad": "Alta",
-      "precondiciones": "Usuario sin registro previo y datos válidos.",
-      "pasos": "1. Preparar datos del caso TC-20.\n2. Ejecutar la operación sobre la tabla usuarios.\n3. Validar la respuesta del sistema.\n4. Confirmar la regla de negocio o la restricción correspondiente."
+      "precondiciones": "Existe previamente un usuario registrado con el correo mlopez@empresa.com, distinto del usuario con ID 1.",
+      "pasos": "1. Preparar datos del caso TC-20 y token Bearer válido.\n2. Ejecutar PUT /api/usuarios/1 con el payload del caso.\n3. Validar código HTTP 409 Conflict y que el correo del usuario 1 no cambió.\n4. Confirmar la regla de negocio o la restricción correspondiente."
     }
   ]
 }
