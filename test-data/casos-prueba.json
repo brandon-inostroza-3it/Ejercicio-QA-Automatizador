@@ -74,6 +74,62 @@
       "mitigacion": "Renovar el token antes de cada suite."
     }
   ],
+  "revisionCobertura": {
+    "alcance": "Análisis sobre casos-prueba.json. README, colección Postman, OpenAPI y scripts de automatización no fueron entregados, por lo que no se evaluaron.",
+    "cobertura": {
+      "funcional": "Creación, unicidad, obligatoriedad, reglas de negocio e integridad en POST y PUT. Se agregan consultas GET, actualización de solicitudes, eliminación de documentos y recursos inexistentes (404).",
+      "metodosHttp": {
+        "cubiertos": ["GET", "POST", "PUT", "DELETE", "PATCH (como método no permitido)"],
+        "sinCobertura": ["OPTIONS", "HEAD"]
+      },
+      "codigosHttp": ["200", "201", "204", "400", "401", "403", "404", "405", "409", "415", "422"],
+      "seguridad": "Autenticación (401), autorización por rol (403), acceso entre usuarios (IDOR) e inyección SQL. Pendiente: token expirado y scopes de OAuth2/Keycloak, CORS, rate limiting y XSS.",
+      "datos": "Vacíos, longitud máxima, tipos incorrectos y formatos inválidos. Pendiente: nulos en campos requeridos, unicode y valores extremos.",
+      "negocio": "Unicidad, referencias, rango salarial, fechas, vacantes y eliminaciones con dependencias. Pendiente: transiciones de estado de la solicitud e idempotencia."
+    },
+    "mejoras": [
+      {
+        "problema": "Los endpoints GET, PUT y DELETE no tenían casos de éxito ni de recurso inexistente.",
+        "descripcionTecnica": "Solo había casos POST y las eliminaciones de integridad. No se validaba la lectura de usuarios y solicitudes, la actualización de solicitudes ni la eliminación de documentos.",
+        "riesgo": "Regresiones en lectura, actualización y eliminación no detectadas.",
+        "severidad": "Alta",
+        "recomendacion": "Agregar casos de éxito y de recurso inexistente (404) para cada endpoint CRUD.",
+        "ejemplo": "TC-21 a TC-28."
+      },
+      {
+        "problema": "No hay pruebas de autenticación ni autorización.",
+        "descripcionTecnica": "Todos los casos usan un Bearer válido. No se valida el rechazo sin token, el acceso por rol ni el acceso entre usuarios.",
+        "riesgo": "Acceso no autorizado a datos de otros usuarios o a operaciones de administración.",
+        "severidad": "Crítica",
+        "recomendacion": "Agregar casos 401, 403 e IDOR.",
+        "ejemplo": "TC-29 a TC-31."
+      },
+      {
+        "problema": "Faltan entradas maliciosas, tipos de dato erróneos y formatos de solicitud inválidos.",
+        "descripcionTecnica": "Los casos de datos cubren vacíos y longitud, pero no inyección, tipos incorrectos, Content-Type no soportado ni métodos no permitidos.",
+        "riesgo": "Errores 500 o datos corruptos ante entradas maliciosas o mal formadas.",
+        "severidad": "Alta",
+        "recomendacion": "Agregar casos de inyección SQL, tipo incorrecto, Content-Type y método no permitido con sus códigos HTTP.",
+        "ejemplo": "TC-32 a TC-35."
+      },
+      {
+        "problema": "Los casos TC-01 a TC-20 no tienen script de validación automatizable.",
+        "descripcionTecnica": "Solo tienen pasos en texto. No tienen assertions de Postman que se puedan ejecutar con Newman en CI.",
+        "riesgo": "Validación manual y no reproducible.",
+        "severidad": "Media",
+        "recomendacion": "Agregar scriptValidacion (pm.test) a cada caso al automatizar la colección.",
+        "ejemplo": "Ver scriptValidacion en TC-21 a TC-35."
+      },
+      {
+        "problema": "Faltan casos de OAuth2/Keycloak y de contrato OpenAPI.",
+        "descripcionTecnica": "No hay casos de token expirado, scopes insuficientes ni validación de respuestas contra la especificación OpenAPI.",
+        "riesgo": "La API puede desviarse del contrato o aceptar tokens inválidos.",
+        "severidad": "Alta",
+        "recomendacion": "Entregar la especificación OpenAPI y el flujo de Keycloak para diseñar los casos de token expirado (401) y scope insuficiente (403).",
+        "ejemplo": "Pendiente de artefactos."
+      }
+    ]
+  },
   "planPrueba": [
     {
       "epic": "usuarios",
@@ -121,6 +177,42 @@
         "TC-18",
         "TC-19",
         "TC-20"
+      ]
+    },
+    {
+      "epic": "consultas",
+      "grupo": "consultas",
+      "descripcion": "Lectura, actualización por ID y eliminación de recursos existentes e inexistentes",
+      "ids": [
+        "TC-21",
+        "TC-22",
+        "TC-23",
+        "TC-24",
+        "TC-25",
+        "TC-26",
+        "TC-27",
+        "TC-28"
+      ]
+    },
+    {
+      "epic": "seguridad",
+      "grupo": "seguridad",
+      "descripcion": "Autenticación, autorización y acceso entre usuarios",
+      "ids": [
+        "TC-29",
+        "TC-30",
+        "TC-31"
+      ]
+    },
+    {
+      "epic": "contrato-http",
+      "grupo": "contrato-http",
+      "descripcion": "Inyección, métodos no permitidos, Content-Type y tipos de dato",
+      "ids": [
+        "TC-32",
+        "TC-33",
+        "TC-34",
+        "TC-35"
       ]
     }
   ],
@@ -698,6 +790,391 @@
       "prioridad": "Alta",
       "precondiciones": "Existe previamente un usuario registrado con el correo mlopez@empresa.com, distinto del usuario con ID 1.",
       "pasos": "1. Preparar datos del caso TC-20 y token Bearer válido.\n2. Ejecutar PUT /api/usuarios/1 con el payload del caso.\n3. Validar código HTTP 409 Conflict y que el correo del usuario 1 no cambió.\n4. Confirmar la regla de negocio o la restricción correspondiente."
+    },
+    {
+      "id": "TC-21",
+      "epic": "usuarios",
+      "modulo": "usuarios",
+      "historiaUsuario": "Como usuario del sistema, quiero consultar mis datos por ID para verificar la información registrada.",
+      "tipo": "Funcional",
+      "titulo": "Consultar usuario existente",
+      "endpoint": "/api/usuarios/1",
+      "metodo": "GET",
+      "headers": {
+        "Accept": "application/json",
+        "Authorization": "Bearer {{token}}"
+      },
+      "payload": null,
+      "codigoEsperado": "200 OK",
+      "tipoRespuestaEsperada": "application/json: datos del usuario 1 sin exponer clave_hash",
+      "resultadoEsperado": "El sistema devuelve los datos del usuario sin exponer la clave.",
+      "estado": "Pendiente",
+      "prioridad": "Alta",
+      "precondiciones": "Usuario con ID 1 existente (dato semilla).",
+      "pasos": "1. Preparar token Bearer válido.\n2. Ejecutar GET /api/usuarios/1.\n3. Validar 200 OK, id igual a 1 y ausencia de clave_hash en la respuesta.\n4. Confirmar la regla de negocio o la restricción correspondiente.",
+      "scriptValidacion": "pm.test('200 OK', () => pm.response.to.have.status(200)); pm.test('No expone clave_hash', () => pm.expect(pm.response.json()).to.not.have.property('clave_hash'));"
+    },
+    {
+      "id": "TC-22",
+      "epic": "usuarios",
+      "modulo": "usuarios",
+      "historiaUsuario": "Como sistema, quiero responder 404 al consultar un usuario que no existe para informar el recurso no encontrado.",
+      "tipo": "Funcional",
+      "titulo": "Consultar usuario inexistente",
+      "endpoint": "/api/usuarios/999999",
+      "metodo": "GET",
+      "headers": {
+        "Accept": "application/json",
+        "Authorization": "Bearer {{token}}"
+      },
+      "payload": null,
+      "codigoEsperado": "404 Not Found",
+      "tipoRespuestaEsperada": "application/json: error indicando usuario no encontrado",
+      "resultadoEsperado": "El sistema responde 404 Not Found sin devolver datos de ningún usuario.",
+      "estado": "Pendiente",
+      "prioridad": "Media",
+      "precondiciones": "No existe un usuario con ID 999999.",
+      "pasos": "1. Preparar token Bearer válido.\n2. Ejecutar GET /api/usuarios/999999.\n3. Validar 404 Not Found y mensaje de recurso no encontrado.\n4. Confirmar la regla de negocio o la restricción correspondiente.",
+      "scriptValidacion": "pm.test('404 Not Found', () => pm.response.to.have.status(404));"
+    },
+    {
+      "id": "TC-23",
+      "epic": "usuarios",
+      "modulo": "usuarios",
+      "historiaUsuario": "Como usuario del sistema, quiero actualizar mi nombre para mantener mi perfil al día.",
+      "tipo": "Funcional",
+      "titulo": "Actualizar nombre de usuario existente",
+      "endpoint": "/api/usuarios/1",
+      "metodo": "PUT",
+      "headers": {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "Authorization": "Bearer {{token}}"
+      },
+      "payload": {
+        "usuario_id": 1,
+        "nombre": "Juan Carlos"
+      },
+      "codigoEsperado": "200 OK",
+      "tipoRespuestaEsperada": "application/json: usuario actualizado con el nuevo nombre",
+      "resultadoEsperado": "El sistema actualiza el nombre del usuario 1 y conserva el resto de sus datos.",
+      "estado": "Pendiente",
+      "prioridad": "Alta",
+      "precondiciones": "Usuario con ID 1 existente.",
+      "pasos": "1. Preparar token Bearer válido.\n2. Ejecutar PUT /api/usuarios/1 con el payload del caso.\n3. Validar 200 OK y que GET /api/usuarios/1 devuelve el nuevo nombre.\n4. Confirmar la regla de negocio o la restricción correspondiente.",
+      "scriptValidacion": "pm.test('200 OK', () => pm.response.to.have.status(200)); pm.test('Nombre actualizado', () => pm.expect(pm.response.json().nombre).to.eql('Juan Carlos'));"
+    },
+    {
+      "id": "TC-24",
+      "epic": "usuarios",
+      "modulo": "usuarios",
+      "historiaUsuario": "Como sistema, quiero responder 404 al eliminar un usuario que no existe para evitar operaciones sobre recursos inexistentes.",
+      "tipo": "Funcional",
+      "titulo": "Eliminar usuario inexistente",
+      "endpoint": "/api/usuarios/999999",
+      "metodo": "DELETE",
+      "headers": {
+        "Accept": "application/json",
+        "Authorization": "Bearer {{token}}"
+      },
+      "payload": null,
+      "codigoEsperado": "404 Not Found",
+      "tipoRespuestaEsperada": "application/json: error indicando usuario no encontrado",
+      "resultadoEsperado": "El sistema responde 404 Not Found y no modifica ningún registro.",
+      "estado": "Pendiente",
+      "prioridad": "Media",
+      "precondiciones": "No existe un usuario con ID 999999.",
+      "pasos": "1. Preparar token Bearer válido.\n2. Ejecutar DELETE /api/usuarios/999999.\n3. Validar 404 Not Found.\n4. Confirmar la regla de negocio o la restricción correspondiente.",
+      "scriptValidacion": "pm.test('404 Not Found', () => pm.response.to.have.status(404));"
+    },
+    {
+      "id": "TC-25",
+      "epic": "solicitudes",
+      "modulo": "solicitudes",
+      "historiaUsuario": "Como gestor, quiero consultar una solicitud por ID para revisar su estado y datos.",
+      "tipo": "Funcional",
+      "titulo": "Consultar solicitud existente",
+      "endpoint": "/api/solicitudes/1",
+      "metodo": "GET",
+      "headers": {
+        "Accept": "application/json",
+        "Authorization": "Bearer {{token}}"
+      },
+      "payload": null,
+      "codigoEsperado": "200 OK",
+      "tipoRespuestaEsperada": "application/json: datos de la solicitud 1 con su estado",
+      "resultadoEsperado": "El sistema devuelve la solicitud 1 con su estado actual.",
+      "estado": "Pendiente",
+      "prioridad": "Alta",
+      "precondiciones": "Solicitud con ID 1 existente (dato semilla).",
+      "pasos": "1. Preparar token Bearer válido.\n2. Ejecutar GET /api/solicitudes/1.\n3. Validar 200 OK, id igual a 1 y campo estado presente.\n4. Confirmar la regla de negocio o la restricción correspondiente.",
+      "scriptValidacion": "pm.test('200 OK', () => pm.response.to.have.status(200)); pm.test('Incluye estado', () => pm.expect(pm.response.json()).to.have.property('estado'));"
+    },
+    {
+      "id": "TC-26",
+      "epic": "solicitudes",
+      "modulo": "solicitudes",
+      "historiaUsuario": "Como gestor, quiero actualizar el número de vacantes de una solicitud para ajustar la contratación.",
+      "tipo": "Funcional",
+      "titulo": "Actualizar vacantes de solicitud existente",
+      "endpoint": "/api/solicitudes/1",
+      "metodo": "PUT",
+      "headers": {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "Authorization": "Bearer {{token}}"
+      },
+      "payload": {
+        "usuario_id": 1,
+        "numero_vacantes": 3,
+        "estado": "Pendiente"
+      },
+      "codigoEsperado": "200 OK",
+      "tipoRespuestaEsperada": "application/json: solicitud actualizada con numero_vacantes 3",
+      "resultadoEsperado": "El sistema actualiza las vacantes de la solicitud 1.",
+      "estado": "Pendiente",
+      "prioridad": "Alta",
+      "precondiciones": "Solicitud con ID 1 existente en estado Pendiente.",
+      "pasos": "1. Preparar token Bearer válido.\n2. Ejecutar PUT /api/solicitudes/1 con el payload del caso.\n3. Validar 200 OK y que GET /api/solicitudes/1 devuelve numero_vacantes 3.\n4. Confirmar la regla de negocio o la restricción correspondiente.",
+      "scriptValidacion": "pm.test('200 OK', () => pm.response.to.have.status(200)); pm.test('Vacantes actualizadas', () => pm.expect(pm.response.json().numero_vacantes).to.eql(3));"
+    },
+    {
+      "id": "TC-27",
+      "epic": "documentos",
+      "modulo": "documentos",
+      "historiaUsuario": "Como gestor, quiero consultar un documento por ID para verificar su contenido asociado.",
+      "tipo": "Funcional",
+      "titulo": "Consultar documento existente",
+      "endpoint": "/api/documentos/1",
+      "metodo": "GET",
+      "headers": {
+        "Accept": "application/json",
+        "Authorization": "Bearer {{token}}"
+      },
+      "payload": null,
+      "codigoEsperado": "200 OK",
+      "tipoRespuestaEsperada": "application/json: datos del documento 1 con solicitud_id asociado",
+      "resultadoEsperado": "El sistema devuelve el documento 1 asociado a su solicitud.",
+      "estado": "Pendiente",
+      "prioridad": "Media",
+      "precondiciones": "Documento con ID 1 creado previamente (TC-14).",
+      "pasos": "1. Preparar token Bearer válido.\n2. Ejecutar GET /api/documentos/1.\n3. Validar 200 OK y que solicitud_id coincide con la solicitud asociada.\n4. Confirmar la regla de negocio o la restricción correspondiente.",
+      "scriptValidacion": "pm.test('200 OK', () => pm.response.to.have.status(200)); pm.test('Incluye solicitud_id', () => pm.expect(pm.response.json()).to.have.property('solicitud_id'));"
+    },
+    {
+      "id": "TC-28",
+      "epic": "documentos",
+      "modulo": "documentos",
+      "historiaUsuario": "Como gestor, quiero eliminar un documento sin dependencias para retirar archivos obsoletos.",
+      "tipo": "Funcional",
+      "titulo": "Eliminar documento existente",
+      "endpoint": "/api/documentos/1",
+      "metodo": "DELETE",
+      "headers": {
+        "Accept": "application/json",
+        "Authorization": "Bearer {{token}}"
+      },
+      "payload": null,
+      "codigoEsperado": "204 No Content",
+      "tipoRespuestaEsperada": "Sin cuerpo de respuesta",
+      "resultadoEsperado": "El sistema elimina el documento 1 y una consulta posterior responde 404.",
+      "estado": "Pendiente",
+      "prioridad": "Media",
+      "precondiciones": "Documento con ID 1 existente y sin dependencias. Ejecutar después de TC-27.",
+      "pasos": "1. Preparar token Bearer válido.\n2. Ejecutar DELETE /api/documentos/1.\n3. Validar 204 No Content.\n4. Ejecutar GET /api/documentos/1 y validar 404 Not Found.",
+      "scriptValidacion": "pm.test('204 No Content', () => pm.response.to.have.status(204));"
+    },
+    {
+      "id": "TC-29",
+      "epic": "seguridad",
+      "modulo": "usuarios",
+      "historiaUsuario": "Como sistema, quiero rechazar las solicitudes sin autenticación para proteger el registro de usuarios.",
+      "tipo": "No funcional",
+      "titulo": "Crear usuario sin token de autenticación",
+      "endpoint": "/api/usuarios",
+      "metodo": "POST",
+      "headers": {
+        "Content-Type": "application/json",
+        "Accept": "application/json"
+      },
+      "payload": {
+        "nombre_usuario": "sin_token",
+        "email_usuario": "sin_token@empresa.com",
+        "clave_hash": "$2b$12$7E0Qb5J0FzTXEZ6K0M0xQe6N8sZg5QXT7WnI1Zq0VxD8m9YqwF2uK",
+        "nombre": "Sin",
+        "apellido": "Token"
+      },
+      "codigoEsperado": "401 Unauthorized",
+      "tipoRespuestaEsperada": "application/json: error indicando token ausente o no válido",
+      "resultadoEsperado": "El sistema rechaza la solicitud y no crea el usuario.",
+      "estado": "Pendiente",
+      "prioridad": "Alta",
+      "precondiciones": "Usuario sin registro previo. La solicitud no incluye cabecera Authorization.",
+      "pasos": "1. Preparar datos del caso TC-29 sin token.\n2. Ejecutar POST /api/usuarios sin cabecera Authorization.\n3. Validar 401 Unauthorized y que GET /api/usuarios?nombre_usuario=sin_token no devuelve registros.\n4. Confirmar la regla de negocio o la restricción correspondiente.",
+      "scriptValidacion": "pm.test('401 Unauthorized', () => pm.response.to.have.status(401));"
+    },
+    {
+      "id": "TC-30",
+      "epic": "seguridad",
+      "modulo": "usuarios",
+      "historiaUsuario": "Como sistema, quiero impedir que un postulante elimine usuarios para proteger la administración de cuentas.",
+      "tipo": "No funcional",
+      "titulo": "Eliminar usuario con rol sin permisos",
+      "endpoint": "/api/usuarios/1",
+      "metodo": "DELETE",
+      "headers": {
+        "Accept": "application/json",
+        "Authorization": "Bearer {{tokenPostulante}}"
+      },
+      "payload": null,
+      "codigoEsperado": "403 Forbidden",
+      "tipoRespuestaEsperada": "application/json: error indicando permisos insuficientes",
+      "resultadoEsperado": "El sistema rechaza la eliminación por rol y el usuario 1 permanece registrado.",
+      "estado": "Pendiente",
+      "prioridad": "Alta",
+      "precondiciones": "Token de postulante vigente, sin permiso de eliminación. Usuario con ID 1 existente.",
+      "pasos": "1. Preparar token Bearer de postulante.\n2. Ejecutar DELETE /api/usuarios/1.\n3. Validar 403 Forbidden y que GET /api/usuarios/1 con token de gestor responde 200 OK.\n4. Confirmar la regla de negocio o la restricción correspondiente.",
+      "scriptValidacion": "pm.test('403 Forbidden', () => pm.response.to.have.status(403));"
+    },
+    {
+      "id": "TC-31",
+      "epic": "seguridad",
+      "modulo": "usuarios",
+      "historiaUsuario": "Como usuario del sistema, quiero que nadie más pueda consultar mis datos para proteger mi información personal.",
+      "tipo": "No funcional",
+      "titulo": "Consultar datos de otro usuario (IDOR)",
+      "endpoint": "/api/usuarios/2",
+      "metodo": "GET",
+      "headers": {
+        "Accept": "application/json",
+        "Authorization": "Bearer {{tokenPostulanteUsuario1}}"
+      },
+      "payload": null,
+      "codigoEsperado": "403 Forbidden",
+      "tipoRespuestaEsperada": "application/json: error indicando acceso no autorizado al recurso",
+      "resultadoEsperado": "El sistema impide consultar los datos del usuario 2 con el token del usuario 1.",
+      "estado": "Pendiente",
+      "prioridad": "Alta",
+      "precondiciones": "Token del usuario con ID 1 vigente. Existe un usuario con ID 2.",
+      "pasos": "1. Preparar token Bearer del usuario 1.\n2. Ejecutar GET /api/usuarios/2.\n3. Validar 403 Forbidden y que la respuesta no contiene datos del usuario 2.\n4. Confirmar la regla de negocio o la restricción correspondiente.",
+      "scriptValidacion": "pm.test('403 Forbidden', () => pm.response.to.have.status(403)); pm.test('Sin datos del usuario 2', () => pm.expect(pm.response.text()).to.not.include('\"id\":2'));"
+    },
+    {
+      "id": "TC-32",
+      "epic": "seguridad",
+      "modulo": "usuarios",
+      "historiaUsuario": "Como sistema, quiero rechazar entradas con patrones de inyección SQL para proteger la base de datos.",
+      "tipo": "No funcional",
+      "titulo": "Inyección SQL en nombre de usuario",
+      "endpoint": "/api/usuarios",
+      "metodo": "POST",
+      "headers": {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "Authorization": "Bearer {{token}}"
+      },
+      "payload": {
+        "nombre_usuario": "admin' OR '1'='1",
+        "email_usuario": "sqli@empresa.com",
+        "clave_hash": "$2b$12$7E0Qb5J0FzTXEZ6K0M0xQe6N8sZg5QXT7WnI1Zq0VxD8m9YqwF2uK",
+        "nombre": "Test",
+        "apellido": "SQLi"
+      },
+      "codigoEsperado": "400 Bad Request",
+      "tipoRespuestaEsperada": "application/json: error de validación indicando caracteres no permitidos en nombre_usuario",
+      "resultadoEsperado": "El sistema rechaza la entrada sin error 500 y no crea el usuario.",
+      "estado": "Pendiente",
+      "prioridad": "Alta",
+      "precondiciones": "Usuario sin registro previo.",
+      "pasos": "1. Preparar token Bearer válido.\n2. Ejecutar POST /api/usuarios con el payload del caso.\n3. Validar 400 Bad Request (no 500) y que no se creó el registro.\n4. Confirmar la regla de negocio o la restricción correspondiente.",
+      "scriptValidacion": "pm.test('400 Bad Request, no 500', () => pm.expect(pm.response.code).to.eql(400));"
+    },
+    {
+      "id": "TC-33",
+      "epic": "contrato-http",
+      "modulo": "usuarios",
+      "historiaUsuario": "Como sistema, quiero rechazar métodos HTTP no soportados para mantener el contrato de la API.",
+      "tipo": "No funcional",
+      "titulo": "Método PATCH no permitido en usuarios",
+      "endpoint": "/api/usuarios/1",
+      "metodo": "PATCH",
+      "headers": {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "Authorization": "Bearer {{token}}"
+      },
+      "payload": {
+        "nombre": "Juan"
+      },
+      "codigoEsperado": "405 Method Not Allowed",
+      "tipoRespuestaEsperada": "Cabecera Allow con los métodos permitidos",
+      "resultadoEsperado": "El sistema responde 405 Method Not Allowed e indica los métodos permitidos sin modificar el usuario.",
+      "estado": "Pendiente",
+      "prioridad": "Baja",
+      "precondiciones": "Usuario con ID 1 existente.",
+      "pasos": "1. Preparar token Bearer válido.\n2. Ejecutar PATCH /api/usuarios/1.\n3. Validar 405 Method Not Allowed y cabecera Allow presente.\n4. Confirmar la regla de negocio o la restricción correspondiente.",
+      "scriptValidacion": "pm.test('405 Method Not Allowed', () => pm.response.to.have.status(405)); pm.test('Cabecera Allow presente', () => pm.expect(pm.response.headers.has('Allow')).to.be.true);"
+    },
+    {
+      "id": "TC-34",
+      "epic": "contrato-http",
+      "modulo": "usuarios",
+      "historiaUsuario": "Como sistema, quiero rechazar solicitudes con Content-Type no soportado para procesar solo JSON.",
+      "tipo": "No funcional",
+      "titulo": "Content-Type no soportado al crear usuario",
+      "endpoint": "/api/usuarios",
+      "metodo": "POST",
+      "headers": {
+        "Content-Type": "text/plain",
+        "Accept": "application/json",
+        "Authorization": "Bearer {{token}}"
+      },
+      "payload": {
+        "nombre_usuario": "texto_plano",
+        "email_usuario": "texto@empresa.com",
+        "clave_hash": "$2b$12$7E0Qb5J0FzTXEZ6K0M0xQe6N8sZg5QXT7WnI1Zq0VxD8m9YqwF2uK",
+        "nombre": "Texto",
+        "apellido": "Plano"
+      },
+      "codigoEsperado": "415 Unsupported Media Type",
+      "tipoRespuestaEsperada": "application/json: error indicando Content-Type no soportado",
+      "resultadoEsperado": "El sistema rechaza la solicitud con 415 y no crea el usuario.",
+      "estado": "Pendiente",
+      "prioridad": "Media",
+      "precondiciones": "Usuario sin registro previo.",
+      "pasos": "1. Preparar token Bearer válido.\n2. Ejecutar POST /api/usuarios con Content-Type text/plain.\n3. Validar 415 Unsupported Media Type y que no se creó el registro.\n4. Confirmar la regla de negocio o la restricción correspondiente.",
+      "scriptValidacion": "pm.test('415 Unsupported Media Type', () => pm.response.to.have.status(415));"
+    },
+    {
+      "id": "TC-35",
+      "epic": "contrato-http",
+      "modulo": "solicitudes",
+      "historiaUsuario": "Como sistema, quiero validar el tipo de dato de numero_vacantes para evitar solicitudes con cantidades no numéricas.",
+      "tipo": "No funcional",
+      "titulo": "Tipo de dato incorrecto en numero_vacantes",
+      "endpoint": "/api/solicitudes",
+      "metodo": "POST",
+      "headers": {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "Authorization": "Bearer {{token}}"
+      },
+      "payload": {
+        "usuario_id": 1,
+        "titulo": "Analista QA",
+        "estado": "Pendiente",
+        "numero_vacantes": "dos",
+        "renta_desde": 1000000,
+        "renta_hasta": 1500000
+      },
+      "codigoEsperado": "400 Bad Request",
+      "tipoRespuestaEsperada": "application/json: error de validación indicando que numero_vacantes debe ser numérico",
+      "resultadoEsperado": "El sistema rechaza la solicitud porque numero_vacantes no es numérico.",
+      "estado": "Pendiente",
+      "prioridad": "Media",
+      "precondiciones": "Usuario con ID 1 existente.",
+      "pasos": "1. Preparar token Bearer válido.\n2. Ejecutar POST /api/solicitudes con numero_vacantes como texto.\n3. Validar 400 Bad Request y detalle de numero_vacantes.\n4. Confirmar la regla de negocio o la restricción correspondiente.",
+      "scriptValidacion": "pm.test('400 Bad Request', () => pm.response.to.have.status(400)); pm.test('Indica numero_vacantes', () => pm.expect(pm.response.text()).to.include('numero_vacantes'));"
     }
   ]
 }
